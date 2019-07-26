@@ -27,7 +27,7 @@ Maintaining tables with text in a text file format (markdown, html, latex, etc) 
 where:
  * `"Header1;Header2;Header3"` are the column names you want to appear in the exported table.
  * `file.md` is the markdown file you want to extract the table from.
- * `-v fmtout=html` is an optional argument to generate an HTML output instead of a LaTex output (default).
+ * `-v fmtout=html` is an optional argument to generate an HTML output instead of a LaTeX output (default).
 
 ### Dependencies
  * gawk
