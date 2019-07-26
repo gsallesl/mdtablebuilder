@@ -1,0 +1,183 @@
+#!/usr/bin/awk -f
+### COMMAND EXAMPLE
+
+## fmtout variable controls the output format, either html or latex
+
+# awk  -v headers="Project;Req. App. Changes;Req. Sys. Changes;Trusts System;Trusts App" -f mdtablebuilder test.md > test.tex
+
+# awk -v fmtout="html" -v headers="Project;Req. App. Changes;Req. Sys. Changes;Trusts System;Trusts App" -f mdtablebuilder test.md > test.html
+
+# ./mdtablebuilder -v  headers="Project;Req. App. Changes" -v fmtout="html" test.md
+
+### INPUT EXAMPLE
+
+# <!-- MDLISTTAB_START -->
+# # Android Data Protection Solutions
+
+#  * Project: Solution1 [^ref1]
+#    * Android (kernel) versions: 2.1
+#    * Granularity: File
+#    * Req. App. Changes: Limited to SMS, MMS, Email
+#    * Req. Sys. Changes: YES
+#    * Trusts App: NO
+#    * Trusts System: YES
+#    * Trusts hardware: YES
+
+#  * Project: Solution2 [^ref2]
+#    * Android (kernel) versions: 2.2.1 (2.6.32)
+#    * Granularity: Two groups of Apps
+#    * Approach: Android middleware isolation + Tomoyo
+#    * Req. App. Changes: NO
+#    * Req. Sys. Changes: YES
+#    * Trusts App: NO
+#    * Trusts System: YES
+#    * Trusts hardware: YES
+
+#  * Project: Solution3 [^ref3]
+#    * Android (kernel) versions: 2.1
+#    * Granularity: App
+#    * Approach: Application level policy to control other app access
+#    * Req. App. Changes: YES (adds a policy)
+#    * Req. Sys. Changes: YES (Partially)
+#    * Trusts App: NO
+#    * Trusts System: YES
+#    * Trusts hardware: YES
+
+#  * Project: Solution4 [^ref4]
+#    * Android (kernel) versions: 4.0.4
+#    * Granularity: Groups of Apps + system service data
+#    * Approach: Policy based Android middleware + kernel hardening
+#    * Req. App. Changes: NO
+#    * Req. Sys. Changes: YES
+#    * Trusts App: NO
+#    * Trusts System: YES
+#    * Trusts hardware: YES
+
+# <!-- MDLISTTAB_END -->
+
+BEGIN {
+    # Flags
+    UN_LIST = 0
+    OR_LIST = 0
+    ROW_CNT = 0
+    split(headers, req_list, ";")
+
+    # OUTPUT
+    OUTPUT="latex"
+    ROW_END="\\\\"
+    ELMT_END="\t & "
+    if (fmtout == "html") {
+        OUTPUT = "html"
+        ROW_START="<tr>"
+        ROW_END="</tr>"
+        HDR_START="<th>"
+        HDR_END="</th>"
+        ELMT_START="<td>"
+        ELMT_END="</td>"
+    }
+}
+/<!-- MDLISTTAB_START -->/{flag=1;next}/<!-- MDLISTTAB_END -->/{flag=0}flag {
+
+    if ($0 ~ /^#.*$/) {
+        caption = gensub("^# *(.+)$", "\\1", "1", $0)
+        } 
+
+#    if (match($0, "/^ *\* |^ *\+ |^ *- /")) {
+    if (match($0, "/^ *\x2a |^ *\x2b |^ *- /")) {
+        if (!UN_LIST) {
+             UN_LIST = 1 
+        }
+
+        field  = gensub("^ +\\* *([^:]+): *(.+)$", "\\1", "1", $0)
+        
+        if (OUTPUT == "latex") {
+            texti = gensub("\\[\\^([^\\]]+)\\]", "\\\\cite{\\1}", "g")
+        }
+        else {
+            texti = gensub("\\[\\^([^\\]]+)\\]", "\\(\\1\\)", "g")
+        }
+
+        text  = gensub("^ +\\* *([^:]+): *(.+)$", "\\2", "1", texti)
+        entries[ROW_CNT][field] = text
+    }
+
+    # Flags
+    if ($1 ~ /^$/ && UN_LIST && !OR_LIST){
+        UN_LIST = 0
+        ROW_CNT++
+    }
+
+}
+END {
+    if (OUTPUT == "latex") { 
+        print "\\begin{table}"
+        print "\\caption{" caption "}"
+        print "\\begin{center}"
+        printf "\\begin{tabular}{|"
+        for(c=0;c<length(req_list);c++) printf "c|"
+        print "}"
+        # HEADER
+        first = 1
+        for (j in req_list) {
+            if (first != 1) {
+                printf ELMT_END
+            }
+            else {
+                first = 0
+                }
+            printf req_list[j]
+        }
+        print ROW_END
+
+        # BODY
+        for (i in entries) 
+        {
+            first = 1
+            for (j in req_list)
+            {
+                if (first != 1) {
+                    printf ELMT_END
+                }
+                else {
+                    first = 0
+                }
+                elmt = req_list[j]
+                printf entries[i][elmt]
+            }
+            print ROW_END
+        }
+        print "\\end{tabular}"
+        print "\\end{center}"
+        print "\\end{table}"
+    }
+
+    if (OUTPUT == "html") {
+        print "<b>" caption "</b>"
+        print "<table>"
+        printf ROW_START
+        # HEADER
+        first = 1
+        for (j in req_list) {
+            printf HDR_START req_list[j] HDR_END
+        }
+        print ROW_END
+
+        # BODY
+        for (i in entries) 
+        {
+            printf ROW_START
+            for (j in req_list)
+            {
+                elmt = req_list[j]
+                printf ELMT_START entries[i][elmt] ELMT_END
+            }
+            print ROW_END
+        }
+        print "</table>"
+
+    }
+    if ($1 ~ /^$/ && UN_LIST && !OR_LIST) {
+        UN_LIST = 0
+        ROW_CNT++
+    }
+}
