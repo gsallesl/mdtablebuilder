@@ -35,7 +35,7 @@ where:
 ### Markdown list format
 
  * Note the use of the two HTML comments to delimit the list.
- * Each block of list, separated by a new line, represent a column in the resulting table.
+ * Each block of list, separated by a new line, represent a row in the resulting table.
  * The column the element goes in is indicated by the text before the ":".
 
 ```markdown
